@@ -127,6 +127,11 @@ public class Rocket : MonoBehaviour
     private void Finish()
     {
         _state = State.NextLevel;
+        int currentLevel = SceneManager.GetActiveScene().buildIndex;
+        if (currentLevel >= PlayerPrefs.GetInt("levels"))
+        {
+            PlayerPrefs.SetInt("levels", currentLevel + 1);
+        }
         _audioSource.Stop();
         _audioSource.PlayOneShot(_finishSound);
         _leftThrusterParticles.Stop();
