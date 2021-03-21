@@ -9,6 +9,8 @@ public class Sphere : MonoBehaviour
     private void OnTriggerEnter(Collider other)
     {
         other.attachedRigidbody.useGravity = false;
+        Vector3 velocity = other.attachedRigidbody.velocity;
+        other.attachedRigidbody.velocity = velocity / 4;
     }
     private void OnTriggerStay(Collider other)
     {
@@ -18,5 +20,7 @@ public class Sphere : MonoBehaviour
     private void OnTriggerExit(Collider other)
     {
         other.attachedRigidbody.useGravity = true;
+        Vector3 velocity = other.attachedRigidbody.velocity;
+        other.attachedRigidbody.velocity = velocity / 2f;
     }
 }

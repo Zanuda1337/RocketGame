@@ -11,6 +11,8 @@ public class TabGroup : MonoBehaviour
     [SerializeField] private TabButton _startTab;
     [SerializeField] private List<GameObject> _objectsToSwap;
     [SerializeField] private ArrowController _arrowController;
+    [SerializeField] private int _tabToReset;
+    private bool _isTabForced = false;
 
 
     public void Subscribe(TabButton button)
@@ -26,7 +28,15 @@ public class TabGroup : MonoBehaviour
     {
         if (_startTab!=null)
         {
-        OnTabSelected(_startTab);
+            OnTabSelected(_startTab);
+        }
+    }
+    public void Update()
+    {
+        if (Rocket.instance != null && _startTab != null && Rocket.instance.Status != Rocket.State.Playing && !_isTabForced)
+        {
+            OnTabSelected(_startTab);
+            _isTabForced = true;
         }
     }
     public void OnTabSelected(TabButton button)
@@ -44,7 +54,7 @@ public class TabGroup : MonoBehaviour
         {
             if (i == index)
             {
-                if (_tabButtons[0]==_selectedTab)
+                if (_tabToReset == i)
                 {
                 _arrowController.CurrentPage = 0;
                 _arrowController.ManagePages();
