@@ -1,0 +1,25 @@
+fileFormatVersion: 2
+guid: bfa0a0e2387122f4c842528f7be3f746
+TrueTypeFontImporter:
+  externalObjects: {}
+  serializedVersion: 4
+  fontSize: 16
+  forceTextureCase: -2
+  characterSpacing: 0
+  characterPadding: 1
+  includeFontData: 1
+  fontName: VDS
+  fontNames:
+  - VDS
+  fallbackFontReferences:
+  - {fileID: 12800000, guid: d998ac04e8b11be458cd2e6a98e41ba7, type: 3}
+  - {fileID: 12800000, guid: 28979cf6661d6674fb4616625bcfb077, type: 3}
+  - {fileID: 12800000, guid: 4ecf39ae5efd29e43abe888b5da39c99, type: 3}
+  customCharacters: 
+  fontRenderingMode: 0
+  ascentCalculationMode: 1
+  useLegacyBoundsCalculation: 0
+  shouldRoundAdvanceValue: 1
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 

@@ -13,6 +13,7 @@ public class SettingsController : MonoBehaviour
     [SerializeField] private Toggle _toggleSounds;
     [SerializeField] private Switcher _quality;
     [SerializeField] private Switcher _resolution;
+    [SerializeField] private Switcher _shakeModifier;
     //[SerializeField] private GameObject _postProcessParent;
     [SerializeField] private PostProcessVolume _postProcess;
     private AmbientOcclusion _ambientOcclusion;
@@ -102,6 +103,32 @@ public class SettingsController : MonoBehaviour
                 break;
         }
     }
+    public void SwitchShake()
+    {
+        switch (_shakeModifier.Value)
+        {
+            case 0:
+                if (CameraShake.instance != null) CameraShake.instance.ShakeModifier = 0;
+                PlayerPrefs.SetInt("Shake", 0);
+                break;
+            case 1:
+                if (CameraShake.instance != null) CameraShake.instance.ShakeModifier = 0.25f;
+                PlayerPrefs.SetInt("Shake", 1);
+                break;
+            case 2:
+                if (CameraShake.instance != null) CameraShake.instance.ShakeModifier = 0.5f;
+                PlayerPrefs.SetInt("Shake", 2);
+                break;
+            case 3:
+                if (CameraShake.instance != null) CameraShake.instance.ShakeModifier = 0.75f;
+                PlayerPrefs.SetInt("Shake", 3);
+                break;
+            case 4:
+                if (CameraShake.instance != null) CameraShake.instance.ShakeModifier = 1f;
+                PlayerPrefs.SetInt("Shake", 4);
+                break;
+        }
+    }
     private void SetPostProcessLevel(int level)
     {
         switch (level)
@@ -148,6 +175,8 @@ public class SettingsController : MonoBehaviour
 
         LoadSwitcherPrefs(_quality, "Quality", 2);
         LoadSwitcherPrefs(_resolution, "Resolution", 4);
+        LoadSwitcherPrefs(_shakeModifier, "Shake", 4);
+        SwitchShake();
         SwitchQuality();
         SwitchResolution();
     }

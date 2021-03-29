@@ -14,8 +14,15 @@ public class Rocket : MonoBehaviour
     [SerializeField] private KeyCode _rotateRightKey;
     [SerializeField] private KeyCode _accelerateKey;
 
-    [SerializeField] private float _rotationSpeed;
-    [SerializeField] private float _thrustPower;
+    [SerializeField] private float _damping = 3f;
+    [SerializeField] private float _maxAngularMagnitude = 2.6f;
+    [SerializeField] private float _angularForce = 22;
+    [SerializeField] private float _maxAngle = 0.5f;
+    [SerializeField] private float _rotatingAligmentSpeed = 2.2f;
+    [SerializeField] private float _aligmentSpeed = 1.5f;
+    [SerializeField] private float _thrustPower = 800;
+    [SerializeField] private float _maxSpeed = 30f;
+    [SerializeField] private bool _isAngleClamped;
 
     [SerializeField] private ParticleSystem _leftThrusterParticles;
     [SerializeField] private ParticleSystem _rightThrusterParticles;
@@ -31,13 +38,16 @@ public class Rocket : MonoBehaviour
     [SerializeField] private GameObject _indicators;
 
     public SceneController SceneController;
+    public CameraShake _shaker;
 
     private bool _isWarning = false;
     private bool _isTankEmpty = false;
     private bool _godModeEnabled = false;
     private bool _noClip = false;
+    public bool IsTrapped = false;
 
     public State Status = State.Playing;
+
 
     public static Rocket instance;
     void Awake()
@@ -54,6 +64,7 @@ public class Rocket : MonoBehaviour
     }
     void Start()
     {
+
         Status = State.Playing;
         Body = GetComponent<Rigidbody>();
         SceneController = FindObjectOfType<SceneController>();
@@ -62,22 +73,29 @@ public class Rocket : MonoBehaviour
         AudioManager.instance.Play("Hover");
         AudioManager.instance.SetVolume("Hover", 0f);
         AudioManager.instance.SetPitch("Hover", 0f);
-        StartCoroutine(AudioManager.instance.SmoothVolumeUp("Hover", 1f, 0.5f));
-        StartCoroutine(AudioManager.instance.SmoothPitchUp("Hover", 1f, 0.3f));
+        StartCoroutine(AudioManager.instance.SmoothVolumeUp("Hover", 1f, 2.5f));
+        StartCoroutine(AudioManager.instance.SmoothPitchUp("Hover", 1f, 1f));
     }
 
-    void Update()
+    void FixedUpdate()
     {
         if (Status == State.Playing && !SceneController.IsMenuShown)
         {
             if (!_isTankEmpty) Thrust();
             Rotation();
         }
+        /*if (Debug.isDebugBuild && !SceneController.IsMenuShown)
+        {
+            DebugKeys();
+        }*/
+        Indicators();
+    }
+    private void Update()
+    {
         if (Debug.isDebugBuild && !SceneController.IsMenuShown)
         {
             DebugKeys();
         }
-        Indicators();
     }
     private void DebugKeys()
     {
@@ -95,11 +113,12 @@ public class Rocket : MonoBehaviour
             _noClip = !_noClip;
             if (_noClip) Body.detectCollisions = false;
             else Body.detectCollisions = true;
+            Debug.Log("kek");
         }
     }
     private void OnCollisionEnter(Collision collision)
     {
-        if (Status != State.Playing || _godModeEnabled)
+        if (Status != State.Playing && Status != State.Restart && Status != State.NextLevel || _godModeEnabled)
         {
             return;
         }
@@ -128,6 +147,13 @@ public class Rocket : MonoBehaviour
             Finish();
         }
     }
+    private void OnTriggerStay(Collider collision)
+    {
+        if (collision.gameObject.tag == "Obstacle")
+        {
+            StartCoroutine(collision.GetComponentInChildren<MovingObstacleAnimator>().Trigger());
+        }
+    }
     private void Lose()
     {
         Status = State.Dead;
@@ -139,10 +165,13 @@ public class Rocket : MonoBehaviour
         Body.freezeRotation = false;
         SetColor(_ufoPart, new Vector4(0.35f,0.25f,0.25f,1), new Vector4(0, 0, 0, 1));
         SetLightIntesity(0f);
+        StartCoroutine(_shaker.Shake(3.8f));
     }
     private void Finish()
     {
         Status = State.NextLevel;
+        Body.angularVelocity = Vector3.zero;
+        transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(Vector3.zero), 1.5f * Time.deltaTime);
         AudioManager.instance.Play("Finish");
         AudioManager.instance.SetPitch("Hover", 0.85f);
         StartCoroutine(AudioManager.instance.SmoothVolumeDown("Hover", 0.2f, 1f));
@@ -165,6 +194,7 @@ public class Rocket : MonoBehaviour
             {
                 FuelSpending();
             }
+            AudioManager.instance.Play("Hover");
         }
         else
         {
@@ -182,22 +212,35 @@ public class Rocket : MonoBehaviour
                 StartCoroutine(AudioManager.instance.SmoothPitchDown("Hover", 0.95f, 5f));
             }
         }
+        Body.velocity = Vector3.ClampMagnitude(Body.velocity, _maxSpeed);
     }
     private void Rotation()
     {
 
-        float deltaZ = _rotationSpeed * Time.deltaTime;
+        float deltaZ = _angularForce * Time.deltaTime;
 
         if (Input.GetKey(_rotateLeftKey))
         {
-            Body.transform.Rotate(0, 0, deltaZ);
-            Body.angularVelocity = Vector3.zero;
+            //Body.transform.Rotate(0, 0, deltaZ);
+            //Body.angularVelocity = Vector3.zero;
+            Body.angularVelocity += new Vector3(0, 0, deltaZ);
+            if (_isAngleClamped) transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(Vector3.zero), _rotatingAligmentSpeed * Time.deltaTime);
         }
         else if (Input.GetKey(_rotateRightKey))
         {
-            Body.transform.Rotate(0, 0, -deltaZ);
-            Body.angularVelocity = Vector3.zero;
+            //Body.transform.Rotate(0, 0, -deltaZ);
+            //Body.angularVelocity = Vector3.zero;
+            Body.angularVelocity += new Vector3(0, 0, -deltaZ);
+            if (_isAngleClamped) transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(Vector3.zero), _rotatingAligmentSpeed * Time.deltaTime);
         }
+        else if (_isAngleClamped) transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(Vector3.zero), _aligmentSpeed * Time.deltaTime);
+        if (_isAngleClamped)
+        {
+            Body.transform.rotation = new Quaternion(0, 0, Mathf.Clamp(Body.transform.rotation.z, -_maxAngle, _maxAngle), Body.transform.rotation.w);
+            Body.drag = 0.5f - Mathf.Abs(Body.transform.rotation.z) / 1.5f;
+        }
+        Body.angularVelocity = Vector3.ClampMagnitude(Body.angularVelocity, _maxAngularMagnitude);
+        Body.angularVelocity = Vector3.Lerp(Body.angularVelocity, Vector3.zero, _damping * Time.deltaTime);
     }
     private void PowerUp(float energy, GameObject battery)
     {
@@ -279,5 +322,5 @@ public class Rocket : MonoBehaviour
         }
     }
 
-    public enum State {Playing, Dead, NextLevel};
+    public enum State {Playing, Dead, NextLevel, Restart};
 }

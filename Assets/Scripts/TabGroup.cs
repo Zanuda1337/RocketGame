@@ -12,6 +12,9 @@ public class TabGroup : MonoBehaviour
     [SerializeField] private List<GameObject> _objectsToSwap;
     [SerializeField] private ArrowController _arrowController;
     [SerializeField] private int _tabToReset;
+    [SerializeField] private Animator _animator;
+    private bool isStart = true;
+    
     private bool _isTabForced = false;
 
 
@@ -41,7 +44,7 @@ public class TabGroup : MonoBehaviour
     }
     public void OnTabSelected(TabButton button)
     {
-        if (_selectedTab != null)
+        /*if (_selectedTab != null)
         {
             _selectedTab.Deselect();
         }
@@ -50,6 +53,10 @@ public class TabGroup : MonoBehaviour
         ResetTabs();
         button.Background.sprite = button.Selected;
         int index = button.transform.GetSiblingIndex();
+
+        StartCoroutine(Hide(0));
+        yield return new WaitForSeconds(1f);
+
         for (int i = 0; i < _objectsToSwap.Count; i++)
         {
             if (i == index)
@@ -60,11 +67,72 @@ public class TabGroup : MonoBehaviour
                 _arrowController.ManagePages();
                 }
                 _objectsToSwap[i].SetActive(true);
+                //StartCoroutine(Show(i));
             }
             else
             {
                 _objectsToSwap[i].SetActive(false);
+                //StartCoroutine(Hide(i));
             }
+        }
+        StartCoroutine(Show(0));
+        yield return null;*/
+        if (button == _selectedTab) return;
+        StartCoroutine(Coroutine(button));
+    }
+    public IEnumerator Coroutine(TabButton button)
+    {
+        if (isStart)
+        {
+            if (_selectedTab != null)
+            {
+                _selectedTab.Deselect();
+            }
+            _selectedTab = button;
+            _selectedTab.Select();
+            ResetTabs();
+            button.Background.sprite = button.Selected;
+            yield return null;
+            isStart = false;
+        }
+        else
+        {
+            if (_selectedTab != null)
+            {
+                _selectedTab.Deselect();
+            }
+            _selectedTab = button;
+            _selectedTab.Select();
+            ResetTabs();
+            button.Background.sprite = button.Selected;
+            int index = button.transform.GetSiblingIndex();
+            _animator.speed = 1 / Time.timeScale;
+            //StartCoroutine(Hide(0));
+            _animator.SetTrigger("Hide");
+            yield return new WaitForSeconds(0.145f * Time.timeScale);
+
+            for (int i = 0; i < _objectsToSwap.Count; i++)
+            {
+                if (i == index)
+                {
+                    if (_tabToReset == i)
+                    {
+                        _arrowController.CurrentPage = 0;
+                        _arrowController.ManagePages();
+                    }
+                    _objectsToSwap[i].SetActive(true);
+                    //StartCoroutine(Show(i));
+                }
+                else
+                {
+                    _objectsToSwap[i].SetActive(false);
+                    //StartCoroutine(Hide(i));
+                }
+            }
+            //StartCoroutine(Show(0));
+            _animator.SetTrigger("Show");
+            yield return null;
+
         }
     }
     public void ResetTabs()
@@ -74,5 +142,17 @@ public class TabGroup : MonoBehaviour
             if (_selectedTab!=null && button==_selectedTab) { continue; }
             button.Background.sprite = button.Idle;
         }
+    }
+    public IEnumerator Show(int index = 0)
+    {
+        _animator.SetTrigger("Show");
+        yield return new WaitForSeconds(1f);
+        //_objectsToSwap[index].SetActive(true);
+    }
+    public IEnumerator Hide(int index)
+    {
+        _animator.SetTrigger("Hide");
+        yield return new WaitForSeconds(1f);
+        //_objectsToSwap[index].SetActive(false);
     }
 }
