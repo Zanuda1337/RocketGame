@@ -6,7 +6,7 @@ using UnityEngine.Rendering.PostProcessing;
 public class MovingObstacleAnimator : MonoBehaviour
 {
     private Animator _animator;
-    [SerializeField] private CameraShake _shaker;
+    //[SerializeField] private CameraShake _shaker;
     [SerializeField] private ParticleSystem _particles;
     [SerializeField] private AudioSource _smashSound;
     [SerializeField] private AudioSource _startSound;
@@ -31,7 +31,7 @@ public class MovingObstacleAnimator : MonoBehaviour
         float verticalDistance = Rocket.instance.transform.position.y - transform.position.y;
         if (distance < 80f && verticalDistance < 38 && verticalDistance > -30)
         {
-            StartCoroutine(_shaker.Shake(3.5f - distance/22.5f));
+            StartCoroutine(CameraShake.Instance.Shake((6.6f - distance/12f), 0.3f));
             StartCoroutine(SceneController.instance.PostEffect(0.07f, 0.18f, 0.1f, 0.3f - distance/265));
         }
         _particles.Play();

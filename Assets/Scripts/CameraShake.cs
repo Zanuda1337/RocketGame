@@ -18,56 +18,75 @@ public class CameraShake : MonoBehaviour
 
 	bool rotating = false; 
 
-	float rotationTime = 0;
+	float _rotationTime = 0;
 
-	float lastTime = 0;
+	float _lastTime = 0;
 
 	float _x;
 	float _y;
 	float _z;
-	public static CameraShake instance;
-    public void Start()
+	public static CameraShake Instance;
+    public void Awake()
     {
-        if (instance == null)
+        if (Instance == null)
         {
-			instance = this;
+			Instance = this;
         }
 		Initialize();
-    }
-    public IEnumerator Shake(float strength = 2, float duration = 0.25f, float step = 0.08f)
+	}
+    public void Start()
     {
-        while (rotationTime < duration)
+		//Initialize();
+	}
+    public IEnumerator Shake(float strength = 5, float duration = 0.25f, float step = 0.08f)
+    {
+		Debug.Log("Множитель тряски: " + ShakeModifier);
+		float pointTime = 0;
+		while (_rotationTime < duration)
         {
-			if (Time.time > lastTime + step)
+			if (Time.time > _lastTime + step)
 			{
-				_x = Random.Range(-1, 1) * strength * ShakeModifier;
-				_y = Random.Range(-1, 1) * strength * ShakeModifier;
-				_z = Random.Range(-1, 1) * strength * ShakeModifier;
-				lastTime = Time.time;
+				_x = Random.Range(-1f, 1f) * strength * ShakeModifier;
+				_y = Random.Range(-1f, 1f) * strength * ShakeModifier;
+				_z = Random.Range(-1f, 1f) * strength * ShakeModifier;
+				_lastTime = Time.time;
+				int i = 0;
+				i++;
+				Debug.Log($"Координата {i}:  {_x}, {_y}, {_z}");
+				pointTime = 0;
 			}
 
 			Quaternion targetRotation = Quaternion.Euler(_x, _y, _z);
-
-			rotationTime += Time.deltaTime;
-			if (rotationTime < duration * 0.3f)
+			_rotationTime += Time.deltaTime;
+			pointTime += Time.deltaTime;
+			if (_rotationTime < duration * 0.3f)
 			{
-				_smooth = rotationTime;
+				_smooth = _rotationTime;
 			}
-			else _smooth = Mathf.Sqrt(rotationTime) * 0.8f;
-			transform.localRotation = Quaternion.Lerp(transform.localRotation, targetRotation, _smooth * 0.1f);
+			else _smooth = Mathf.Sqrt(_rotationTime) * 0.8f;
+			transform.localRotation = Quaternion.Lerp(transform.localRotation, targetRotation, pointTime * 0.25f);
+			Debug.Log(transform.localRotation.eulerAngles);
 			yield return null;
 		}
         while (transform.localRotation != Quaternion.Euler(Vector3.zero))
         {
 			transform.localRotation = Quaternion.Lerp(transform.localRotation, Quaternion.Euler(Vector3.zero), 10f * Time.deltaTime);
 			yield return null;
-        }
+		}
 		transform.localRotation = Quaternion.Euler(Vector3.zero);
-		rotationTime = 0;
+		_rotationTime = 0;
     }
-	private void Initialize()
+	public void ShakeCaller()
     {
-		switch (PlayerPrefs.GetInt("Shake"))
+		StartCoroutine(Shake(3.8f, 0.25f, 0.08f));
+    }
+	public void kekmek()
+    {
+
+    }
+	public void Initialize()
+    {
+		switch (PlayerPrefs.GetInt("Shake", 4))
 		{
 			case 0:
 				ShakeModifier = 0;

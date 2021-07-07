@@ -31,6 +31,7 @@ public class SceneController : MonoBehaviour
     [SerializeField] private GameObject _debug;
     [SerializeField] private GameObject _menu;
     [SerializeField] private GameObject _intro;
+    [SerializeField] private GameObject _controls;
 
     [SerializeField] private LevelManager _levelManager;
     [HideInInspector] public int StarsAchieved;
@@ -45,6 +46,9 @@ public class SceneController : MonoBehaviour
     [SerializeField] private Button _nextButton;
     [SerializeField] private PostProcessVolume _postProcess;
     private ChromaticAberration _chromaticAberration;
+    private bool _isVolumeUp = false;
+    private bool _menuTrigger = false;
+    private List<Animator> _buttonsAnimations = new List<Animator>();
 
 
     public static SceneController instance;
@@ -52,20 +56,18 @@ public class SceneController : MonoBehaviour
 
     private void Awake()
     {
-        _mixer.audioMixer.SetFloat("MasterVolume", -40);
         if (instance == null)
         {
             instance = this;
         }
-        Time.timeScale = 0.001f;
+        _volume = -40f;
     }
     void Start()
     {
-        //Time.timeScale = 1f;
         _animator.SetTrigger("End");
-        //_volume = -40f;
-        StartCoroutine(SmoothVolumeUp(0.6f));
-        if (PlayerPrefs.GetInt("Debug") == 1) { _isDebugShown = true; _debug.SetActive(true); }
+        _volume = -40f;
+        StartCoroutine(SmoothVolumeUp(1.7f));
+        if (PlayerPrefs.GetInt("Debug", 1) == 1) { _isDebugShown = true; _debug.SetActive(true); }
         else { _isDebugShown = false; _debug.SetActive(false); }
         _postProcess.profile.TryGetSettings(out _chromaticAberration);
         _nextButton.interactable = false;
@@ -78,7 +80,7 @@ public class SceneController : MonoBehaviour
         if (_currentLevelUI != null) _currentLevelUI.text = _currentLevel.name;
         if (_currentLevelUI2 != null) _currentLevelUI2.text = _currentLevel.name;
         if (_requireTimeUI != null) _requireTimeUI.text = string.Format("{0:0.000}",_levelManager.Levels[_currentLevel.buildIndex-1].ThreeStarsTime);
-        if (_debugRecordUI != null) _debugRecordUI.text = string.Format("Record time: {0:0.000}", PlayerPrefs.GetFloat("Level" + _currentLevel.buildIndex + "Record"));
+        if (_debugRecordUI != null) _debugRecordUI.text = string.Format("Record time: {0:0.000}", PlayerPrefs.GetFloat("Level" + _currentLevel.buildIndex + "Record", 0));
         AudioManager.instance.Play("OST");
         AudioManager.instance.Play("Ambient");
         AudioManager.instance.SetVolume("OST", 0.33f);
@@ -88,26 +90,33 @@ public class SceneController : MonoBehaviour
         //Time.timeScale = 100;
         //Screen.SetResolution(1920, 1080, true);
         //Screen.SetResolution(960, 540, true);
-        foreach (var item in QualitySettings.names)
+        foreach (var animator in _controls.transform.GetComponentsInChildren<Animator>())
         {
-            Debug.Log($"{item}");
+            _buttonsAnimations.Add(animator);
         }
         Time.timeScale = 1f;
     }
 
     void Update()
     {
-        if (Rocket.instance.Status == Rocket.State.NextLevel)
+        if (Rocket.instance.Status == Rocket.State.Finish)
         {
             Finish();
         }
         if (Rocket.instance.Status == Rocket.State.Playing)
         {
-            if (Input.GetKeyDown(KeyCode.Escape) && _menu != null)
+            if ((Input.GetKeyDown(KeyCode.Escape) || _menuTrigger) && _menu != null)
             {
                 IsMenuShown = !IsMenuShown;
                 _menu.SetActive(IsMenuShown);
                 Menu();
+                if (Rocket.instance.Accelerate == true) Rocket.instance.Accelerate = false;
+                if (Rocket.instance.TurnRight == true) Rocket.instance.TurnRight = false;
+                if (Rocket.instance.TurnLeft == true) Rocket.instance.TurnLeft = false;
+                foreach (var animator in _buttonsAnimations)
+                {
+                    animator.ResetTrigger("OnDown");
+                }
             }
         }
         if (Rocket.instance.Status == Rocket.State.Dead)
@@ -129,12 +138,13 @@ public class SceneController : MonoBehaviour
 
     private void Finish()
     {
-        Debug.Log($"Заработано {StarsAchieved} звезд, заработано {_levelManager.Levels[_currentLevel.buildIndex].StarsAchieved}");
+        Record();
         IsMenuShown = true;
         _menu.SetActive(IsMenuShown);
         _chromaticAberration.intensity.value = 0.5f;
         StartCoroutine(FinishAnimation());
-        if (_currentLevel.buildIndex >= PlayerPrefs.GetInt("levels"))
+        if (_controls.activeSelf == true) _controls.SetActive(false);
+        if (_currentLevel.buildIndex >= PlayerPrefs.GetInt("levels", 1))
         {
             if (SceneManager.sceneCountInBuildSettings - 1 > _currentLevel.buildIndex)
                 StartCoroutine(NextLevelActive());
@@ -164,7 +174,7 @@ public class SceneController : MonoBehaviour
         _menu.SetActive(IsMenuShown);
         Menu();
         _animator.SetTrigger("Start");
-        StartCoroutine(SmoothVolumeDown(2f));
+        StartCoroutine(SmoothVolumeDown(1.2f));
         yield return new WaitForSeconds(_transitionTime);
         SceneManager.LoadScene(levelIndex);
     }
@@ -219,8 +229,10 @@ public class SceneController : MonoBehaviour
     {
         //IsMenuShown = !IsMenuShown;
         //_menu.SetActive(IsMenuShown);
+        if (_menuTrigger) _menuTrigger = false;
         if (IsMenuShown)
         {
+            if (_controls.activeSelf == true) _controls.SetActive(false);
             Rocket.instance.StopAllCoroutines();
             //AudioManager.instance.StopAllCoroutines();
             AudioManager.instance.Play("Click1");
@@ -231,6 +243,7 @@ public class SceneController : MonoBehaviour
         }
         else
         {
+            if (_controls.activeSelf == false) _controls.SetActive(true);
             Time.timeScale = 1;
             _chromaticAberration.intensity.value = 0;
             //AudioManager.instance.StopAllCoroutines();
@@ -240,7 +253,7 @@ public class SceneController : MonoBehaviour
                 AudioManager.instance.Play("Click1");
                 AudioManager.instance.Play("Hover");
                 AudioManager.instance.SetVolume("Hover", 1f);
-                StartCoroutine(AudioManager.instance.SmoothPitchUp("Hover", 1f, 0.3f));
+                StartCoroutine(AudioManager.instance.SmoothPitchUp("Hover", 1f, 0.3f, 0.8f, 1.35f));
             }
             //Time.timeScale = 1f;
         }
@@ -255,12 +268,9 @@ public class SceneController : MonoBehaviour
         {
             LoadPreviousLevel();
         }
-        if (Input.GetKeyDown(KeyCode.Tab) && _debug != null)
+        if (Input.GetKeyDown(KeyCode.Tab))
         {
-            _isDebugShown = !_isDebugShown;
-            _debug.SetActive(_isDebugShown);
-            if (_isDebugShown) PlayerPrefs.SetInt("Debug", 1);
-            else PlayerPrefs.SetInt("Debug", 0);
+            DebugWindow();
         }
     }
     private void Timer()
@@ -277,7 +287,7 @@ public class SceneController : MonoBehaviour
             }
             else if (_timer < 3600f)
             {
-                string minutes = Convert.ToString(Convert.ToInt32(_timer / 60));
+                string minutes = Convert.ToString(Math.Floor(_timer / 60));
                 string seconds = string.Format("{0:0.000}", (_timer % 60));
                 if (Convert.ToDouble(seconds) < 10f) seconds = "0" + seconds;
                 _timerUI.text = $"{minutes}:{seconds}";
@@ -317,7 +327,7 @@ public class SceneController : MonoBehaviour
             _timer += Time.deltaTime;
             if (_debugTimerUI!=null) _debugTimerUI.text = string.Format("Timer: {0:0.000}", _timer);
         }
-        if (Rocket.instance.Status == Rocket.State.NextLevel)
+        /*if (Rocket.instance.Status == Rocket.State.NextLevel)
         {
             if (_timer < PlayerPrefs.GetFloat("Level" + _currentLevel.buildIndex + "Record") || PlayerPrefs.GetFloat("Level" + _currentLevel.buildIndex + "Record") == 0f)
             {
@@ -326,7 +336,7 @@ public class SceneController : MonoBehaviour
                 if (_debugRecordUI != null) _debugRecordUI.text = string.Format("Record time: {0:0.000}", PlayerPrefs.GetFloat("Level" + _currentLevel.buildIndex + "Record"));
                 Debug.Log($"New record: {PlayerPrefs.GetFloat("Level" + _currentLevel.buildIndex + "Record")}");
             }
-        }
+        }*/
         if (_debugSpeed != null)_debugSpeed.text = Convert.ToString(string.Format("Speed: {0:0}", Rocket.instance.Body.velocity.magnitude));
         if (_debugEnergyUI != null) _debugEnergyUI.text = "Fuel: " + (Convert.ToInt32(Rocket.instance.EnergyTotal)).ToString();
     }
@@ -415,5 +425,32 @@ public class SceneController : MonoBehaviour
                 break;
         }
         yield return null;
+    }
+    private void Record()
+    {
+        if (Rocket.instance.Status == Rocket.State.Finish)
+        {
+            if (_timer < PlayerPrefs.GetFloat("Level" + _currentLevel.buildIndex + "Record", 0) || PlayerPrefs.GetFloat("Level" + _currentLevel.buildIndex + "Record", 0) == 0f)
+            {
+                _recordTime = _timer;
+                PlayerPrefs.SetFloat("Level" + _currentLevel.buildIndex + "Record", _recordTime);
+                if (_debugRecordUI != null) _debugRecordUI.text = string.Format("Record time: {0:0.000}", PlayerPrefs.GetFloat("Level" + _currentLevel.buildIndex + "Record", 0));
+                Debug.Log($"New record: {PlayerPrefs.GetFloat("Level" + _currentLevel.buildIndex + "Record", 0)}");
+            }
+        }
+    }
+    public void DebugWindow()
+    {
+        if (_debug != null)
+        {
+            _isDebugShown = !_isDebugShown;
+            _debug.SetActive(_isDebugShown);
+            if (_isDebugShown) PlayerPrefs.SetInt("Debug", 1);
+            else PlayerPrefs.SetInt("Debug", 0);
+        }
+    }
+    public void MenuButton(bool trigger)
+    {
+        _menuTrigger = trigger;
     }
 }

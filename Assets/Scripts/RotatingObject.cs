@@ -9,6 +9,6 @@ public class RotatingObject : MonoBehaviour
     void Update()
     {
         Vector3 offset = _moveRotation * Time.time;
-        transform.eulerAngles = offset;
+        transform.localEulerAngles = offset;
     }
 }

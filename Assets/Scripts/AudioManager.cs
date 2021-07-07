@@ -98,7 +98,7 @@ public class AudioManager : MonoBehaviour
         if (s.Source.isPlaying) s.Source.Stop();
         s.Source.volume = 1f;
     }
-    public IEnumerator SmoothPitchDown(string name, float pitch, float time = 0f)
+    public IEnumerator SmoothPitchDown(string name, float pitch, float time = 0f, float min = -1f, float max = 3f)
     {
         Sound s = Array.Find(Sounds, item => item.Name == name);
         if (s == null)
@@ -111,11 +111,12 @@ public class AudioManager : MonoBehaviour
         while (s.Source.pitch > pitch)
         {
                 s.Source.pitch -= Time.unscaledDeltaTime / time;
+                Mathf.Clamp(s.Source.pitch, min, max);
                 s.Pitch = s.Source.pitch;
                 yield return null;
         }
     }
-    public IEnumerator SmoothPitchUp(string name, float pitch, float time = 0f)
+    public IEnumerator SmoothPitchUp(string name, float pitch, float time = 0f, float min = -1f, float max = 3f)
     {
         Sound s = Array.Find(Sounds, item => item.Name == name);
         if (s == null)
@@ -128,6 +129,7 @@ public class AudioManager : MonoBehaviour
         while (s.Source.pitch < pitch)
         {
             s.Source.pitch += Time.unscaledDeltaTime / time;
+            Mathf.Clamp(s.Source.pitch, min, max);
             s.Pitch = s.Source.pitch;
             yield return null;
         }

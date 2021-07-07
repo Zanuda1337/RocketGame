@@ -11,7 +11,7 @@ public class Switcher : MonoBehaviour, IPointerClickHandler
     [SerializeField] private Image _switcherBar;
     [SerializeField] private Image _switcherValue;
     public int Value;
-    [SerializeField] private int _maxValue = 3;
+    [SerializeField] protected int _maxValue = 3;
     public UnityEvent OnValueChanged;
 
     void Start()
@@ -23,34 +23,34 @@ public class Switcher : MonoBehaviour, IPointerClickHandler
         UpdatePosition();
     }
 
-    void Update()
-    {
-        
-    }
 
     public void OnPointerClick(PointerEventData eventData)
     {
         SetValue();
-        OnValueChanged.Invoke();
     }
-    public void SetValue()
+    public virtual void SetValue()
     {
         if (Value + 1 > _maxValue)
         {
             Value = 0;
+            OnValueChanged.Invoke();
         }
         else
         {
             Value += 1;
+            OnValueChanged.Invoke();
         }
         UpdatePosition();
     }
-    public void UpdatePosition()
+    public virtual void UpdatePosition()
     {
-        float barLength = _switcherBar.rectTransform.rect.width - _switcherValue.rectTransform.rect.width;
-        float valuePosition = _switcherValue.rectTransform.localPosition.x;
-        valuePosition = barLength / Convert.ToSingle(_maxValue) * Convert.ToSingle(Value);
-        valuePosition = valuePosition - barLength / 2;
-        _switcherValue.rectTransform.localPosition = new Vector3(valuePosition, _switcherValue.rectTransform.localPosition.y, _switcherValue.rectTransform.localPosition.z);
+        if (_switcherBar != null && _switcherValue != null)
+        {
+            float barLength = _switcherBar.rectTransform.rect.width - _switcherValue.rectTransform.rect.width;
+            float valuePosition = _switcherValue.rectTransform.localPosition.x;
+            valuePosition = barLength / Convert.ToSingle(_maxValue) * Convert.ToSingle(Value);
+            valuePosition = valuePosition - barLength / 2;
+            _switcherValue.rectTransform.localPosition = new Vector3(valuePosition, _switcherValue.rectTransform.localPosition.y, _switcherValue.rectTransform.localPosition.z);
+        }
     }
 }

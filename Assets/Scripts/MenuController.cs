@@ -1,5 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Audio;
 using UnityEngine.SceneManagement;
@@ -18,6 +20,8 @@ public class MenuController : MonoBehaviour
     [SerializeField] private Animator _animator;
     [SerializeField] public AudioMixerGroup Mixer;
     [SerializeField] private float _transitionTime = 1.17f;
+    [SerializeField] private TextMeshProUGUI _starsUI;
+    [SerializeField] private TextMeshProUGUI _crystalsUI;
     private float _volume;
     private Image _image;
     private bool _isExit = false;
@@ -35,6 +39,10 @@ public class MenuController : MonoBehaviour
         {
             Destroy(AudioManager.instance.gameObject);
         }
+        _levelManager.RewardCount();
+        Player.Instance.Crystals = Player.Instance.Crystals - Player.Instance.CrystalsSpent + 10000;
+        _starsUI.text = Convert.ToString(Player.Instance.Stars);
+        _crystalsUI.text = Convert.ToString(Player.Instance.Crystals);
     }
 
     void Update()
@@ -75,12 +83,24 @@ public class MenuController : MonoBehaviour
         PlayerPrefs.DeleteKey("Quality");
         PlayerPrefs.DeleteKey("Resolution");
         PlayerPrefs.DeleteKey("Shake");
+
+        //Ufo characteristics
+        Appearance.Instance.Revert();
+
+
+        //Garage buttons
+        Garage.Instance.RevertStars();
+
+        //Player
+
+
         for (int i = 1; i < SceneManager.sceneCountInBuildSettings; i++)
         {
             PlayerPrefs.DeleteKey("Level" + i + "Record");
         }
         _levelManager.RewardCount();
         UpdateButtons();
+        _starsUI.text = Convert.ToString(Player.Instance.Stars);
         _resetButtons.Back();
     }
     public void UpdateButtons()

@@ -11,6 +11,8 @@ public class ArrowController : MonoBehaviour
     [SerializeField] private Animator _animator;
     private int _lastPage;
     private int _firstPage;
+    [SerializeField] private float _delay = 0.14f;
+    [SerializeField] private AppearanceButton _button;
 
     public int CurrentPage = 0;
 
@@ -18,43 +20,58 @@ public class ArrowController : MonoBehaviour
     {
         _firstPage = 0;
         _lastPage = _pages.Count - 1;
+        BlockArrow(_rightArrow, _lastPage);
+        BlockArrow(_leftArrow, _firstPage);
     }
 
     public void RightPage()
     {
-            CurrentPage += 1;
-            ManagePages();
+        StartCoroutine(Right()); 
+        /*CurrentPage += 1;
+        ManagePages();
+        _animator.SetTrigger("Hide");*/
     }
     public void LeftPage()
     {
-            CurrentPage -= 1;
-            ManagePages();
+        StartCoroutine(Left());
+        /*CurrentPage -= 1;
+        ManagePages();
+        _animator.SetTrigger("Hide");*/
+    }
+    public IEnumerator Right()
+    {
+        _animator.speed = 1 / Time.timeScale;
+        CurrentPage += 1;
+        BlockArrow(_rightArrow, _lastPage);
+        BlockArrow(_leftArrow, _firstPage);
+        _animator.SetTrigger("HideLeft");
+        yield return new WaitForSeconds(_delay * Time.timeScale);
+        ManagePages();
+        _animator.SetTrigger("ShowRight");
+    }
+    public IEnumerator Left()
+    {
+        _animator.speed = 1 / Time.timeScale;
+        CurrentPage -= 1;
+        BlockArrow(_rightArrow, _lastPage);
+        BlockArrow(_leftArrow, _firstPage);
+        _animator.SetTrigger("HideRight");
+        yield return new WaitForSeconds(_delay * Time.timeScale);
+        ManagePages();
+        _animator.SetTrigger("ShowLeft");
     }
     public void ManagePages()
     {
-        /*for (int i = 0; i < _pages.Count; i++)
+        BlockArrow(_rightArrow, _lastPage);
+        BlockArrow(_leftArrow, _firstPage);
+        for (int i = 0; i < _pages.Count; i++)
         {
             if (CurrentPage!=i)
             {
             _pages[i].SetActive(false);
             }
         }
-        _pages[CurrentPage].SetActive(true);*/
-        if (this.isActiveAndEnabled)
-        {
-            StartCoroutine(Coroutine());
-        }
-        else
-        {
-            for (int i = 0; i < _pages.Count; i++)
-            {
-                if (CurrentPage != i)
-                {
-                    _pages[i].SetActive(false);
-                }
-            }
-            _pages[CurrentPage].SetActive(true);
-        }
+        _pages[CurrentPage].SetActive(true);
     }
     public void BlockArrow(Button arrow, int page)
     {
@@ -66,25 +83,5 @@ public class ArrowController : MonoBehaviour
         {
             arrow.interactable = false;
         }
-    }
-    public void Update()
-    {
-        BlockArrow(_rightArrow, _lastPage);
-        BlockArrow(_leftArrow, _firstPage);
-    }
-    public IEnumerator Coroutine()
-    {
-        _animator.speed = 1 / Time.timeScale;
-        _animator.SetTrigger("Hide");
-        yield return new WaitForSeconds(0.14f * Time.timeScale);
-        for (int i = 0; i < _pages.Count; i++)
-        {
-            if (CurrentPage != i)
-            {
-                _pages[i].SetActive(false);
-            }
-        }
-        _pages[CurrentPage].SetActive(true);
-        _animator.SetTrigger("Show");
     }
 }

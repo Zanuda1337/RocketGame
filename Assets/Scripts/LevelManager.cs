@@ -6,52 +6,35 @@ using UnityEngine.UI;
 
 public class LevelManager : MonoBehaviour
 {
-    public static LevelManager instance;
+    public static LevelManager Instance;
 
     public List<Level> Levels;
     public List<GameObject> Images;
     public GameObject Stars;
-    void Awake()
+    public void Awake()
     {
-        /*for (int i = 0; i < SceneManager.sceneCountInBuildSettings; i++)
+        if (Instance == null)
         {
-            Levels.Add()
-        }*/
+            Instance = this;
+        }
         RewardCount();
     }
-
-    void Update()
+    void Start()
     {
-        
+        //RewardCount();
     }
+
     public void RewardCount()
     {
+        int totalStars = 0;
         foreach (var level in Levels)
         {
-            level.RecordTime = PlayerPrefs.GetFloat($"Level{level.Id}Record");
-            //level.TwoStarsTime = level.ThreeStarsTime * 1.2f;
+            level.RecordTime = PlayerPrefs.GetFloat($"Level{level.Id}Record", 0);
             CalculateStars(level.RecordTime, level.ThreeStarsTime, level.TwoStarsTime, out level.StarsAchieved);
-
-            /*if (level.RecordTime <= level.ThreeStarsTime && level.RecordTime != 0f)
-            {
-                level.StarsAchieved = 1;
-                Debug.Log(level.StarsAchieved);
-            }
-            else if (level.RecordTime <= level.TwoStarsTime && level.RecordTime != 0f)
-            {
-                level.StarsAchieved = 2;
-                Debug.Log(level.StarsAchieved);
-            }
-            else if (level.RecordTime >= level.TwoStarsTime && level.RecordTime != 0f)
-            {
-                level.StarsAchieved = 1;
-                Debug.Log(level.StarsAchieved);
-            }
-            else
-            {
-                level.StarsAchieved = 0;
-            }*/
+            Debug.Log(level.StarsAchieved);
+            totalStars += level.StarsAchieved;
         }
+        if (Player.Instance != null) Player.Instance.Stars = totalStars - Player.Instance.StarsSpent + 100;
     }
     public void CalculateStars(float time, float threeStarsTime, float twoStarsTime, out int starsAchieved)
     {

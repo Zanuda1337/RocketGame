@@ -14,6 +14,10 @@ public class Rocket : MonoBehaviour
     [SerializeField] private KeyCode _rotateRightKey;
     [SerializeField] private KeyCode _accelerateKey;
 
+    public bool Accelerate = false;
+    public bool TurnLeft = false;
+    public bool TurnRight = false;
+
     [SerializeField] private float _damping = 3f;
     [SerializeField] private float _maxAngularMagnitude = 2.6f;
     [SerializeField] private float _angularForce = 22;
@@ -32,19 +36,21 @@ public class Rocket : MonoBehaviour
     [SerializeField] public float EnergyTotal;
     [SerializeField] private int _energyConsuption;
 
-    [SerializeField] private Renderer _ufoPart;
-    [SerializeField] private Light _light;
+    /*[SerializeField]*/ private Renderer _ufoPart;
+    /*[SerializeField]*/ private Light _light;
 
-    [SerializeField] private GameObject _indicators;
+    /*[SerializeField]*/ private GameObject _indicators;
 
     public SceneController SceneController;
-    public CameraShake _shaker;
+    //public CameraShake _shaker;
 
     private bool _isWarning = false;
     private bool _isTankEmpty = false;
     private bool _godModeEnabled = false;
     private bool _noClip = false;
     public bool IsTrapped = false;
+    private GameObject _skin;
+    private Color _defaultColor;
 
     public State Status = State.Playing;
 
@@ -64,17 +70,19 @@ public class Rocket : MonoBehaviour
     }
     void Start()
     {
-
+        SkinSelection();
+        initializeModificators();
+        _defaultColor = _ufoPart.material.color;
         Status = State.Playing;
         Body = GetComponent<Rigidbody>();
         SceneController = FindObjectOfType<SceneController>();
-        _ufoPart.material.color = new Vector4(0, ((EnergyTotal * 0.01f) + 1) / 2, ((EnergyTotal * 0.01f) + 1) / 2, 1);
-        _ufoPart.material.SetVector("_EmissionColor", new Vector4(0, EnergyTotal * 0.01f, EnergyTotal * 0.01f, 1f));
+        //_ufoPart.material.color = new Vector4(0, ((EnergyTotal * 0.01f) + 1) / 2, ((EnergyTotal * 0.01f) + 1) / 2, 1);
+        //_ufoPart.material.SetVector("_EmissionColor", new Vector4(0, EnergyTotal * 0.01f, EnergyTotal * 0.01f, 1f));
         AudioManager.instance.Play("Hover");
         AudioManager.instance.SetVolume("Hover", 0f);
         AudioManager.instance.SetPitch("Hover", 0f);
         StartCoroutine(AudioManager.instance.SmoothVolumeUp("Hover", 1f, 2.5f));
-        StartCoroutine(AudioManager.instance.SmoothPitchUp("Hover", 1f, 1f));
+        //StartCoroutine(AudioManager.instance.SmoothPitchUp("Hover", 1f, 1f));
     }
 
     void FixedUpdate()
@@ -113,17 +121,16 @@ public class Rocket : MonoBehaviour
             _noClip = !_noClip;
             if (_noClip) Body.detectCollisions = false;
             else Body.detectCollisions = true;
-            Debug.Log("kek");
         }
     }
     private void OnCollisionEnter(Collision collision)
     {
-        if (Status != State.Playing && Status != State.Restart && Status != State.NextLevel || _godModeEnabled)
+        if (Status != State.Playing && Status != State.Restart && Status != State.NextLevel && Status != State.Finish || _godModeEnabled)
         {
             return;
         }
 
-        switch(collision.gameObject.tag)
+        switch (collision.gameObject.tag)
         {
             case "Friendly":
                 break;
@@ -163,13 +170,13 @@ public class Rocket : MonoBehaviour
         _rightThrusterParticles.Stop();
         _deathParticles.Play();
         Body.freezeRotation = false;
-        SetColor(_ufoPart, new Vector4(0.35f,0.25f,0.25f,1), new Vector4(0, 0, 0, 1));
+        SetColor(_ufoPart, new Vector4(0.35f, 0.25f, 0.25f, 1), new Vector4(0, 0, 0, 1));
         SetLightIntesity(0f);
-        StartCoroutine(_shaker.Shake(3.8f));
+        StartCoroutine(CameraShake.Instance.Shake(7f, 0.3f, 0.08f));
     }
     private void Finish()
     {
-        Status = State.NextLevel;
+        Status = State.Finish;
         Body.angularVelocity = Vector3.zero;
         transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(Vector3.zero), 1.5f * Time.deltaTime);
         AudioManager.instance.Play("Finish");
@@ -181,7 +188,7 @@ public class Rocket : MonoBehaviour
     }
     private void Thrust()
     {
-        if (Input.GetKey(_accelerateKey) && EnergyTotal>0)
+        if (Input.GetKey(_accelerateKey) || Accelerate && EnergyTotal>0)
         {
             Body.AddRelativeForce(Vector3.up * _thrustPower * Time.deltaTime);
             if (_rightThrusterParticles.isStopped && _leftThrusterParticles.isStopped)
@@ -195,6 +202,7 @@ public class Rocket : MonoBehaviour
                 FuelSpending();
             }
             AudioManager.instance.Play("Hover");
+            AudioManager.instance.SetVolume("Hover", 1f);
         }
         else
         {
@@ -209,7 +217,7 @@ public class Rocket : MonoBehaviour
             _rightThrusterParticles.Stop();
             if (EnergyTotal > 0)
             {
-                StartCoroutine(AudioManager.instance.SmoothPitchDown("Hover", 0.95f, 5f));
+                StartCoroutine(AudioManager.instance.SmoothPitchDown("Hover", 0.95f, 5f, 0.8f, 1.35f));
             }
         }
         Body.velocity = Vector3.ClampMagnitude(Body.velocity, _maxSpeed);
@@ -219,19 +227,15 @@ public class Rocket : MonoBehaviour
 
         float deltaZ = _angularForce * Time.deltaTime;
 
-        if (Input.GetKey(_rotateLeftKey))
+        if (Input.GetKey(_rotateLeftKey) || TurnLeft)
         {
-            //Body.transform.Rotate(0, 0, deltaZ);
-            //Body.angularVelocity = Vector3.zero;
             Body.angularVelocity += new Vector3(0, 0, deltaZ);
             if (_isAngleClamped) transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(Vector3.zero), _rotatingAligmentSpeed * Time.deltaTime);
         }
-        else if (Input.GetKey(_rotateRightKey))
+        else if (Input.GetKey(_rotateRightKey) || TurnRight)
         {
-            //Body.transform.Rotate(0, 0, -deltaZ);
-            //Body.angularVelocity = Vector3.zero;
             Body.angularVelocity += new Vector3(0, 0, -deltaZ);
-            if (_isAngleClamped) transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(Vector3.zero), _rotatingAligmentSpeed * Time.deltaTime);
+            if (_isAngleClamped) transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(Vector3.zero), _rotatingAligmentSpeed * Time.deltaTime); 
         }
         else if (_isAngleClamped) transform.rotation = Quaternion.Lerp(transform.rotation, Quaternion.Euler(Vector3.zero), _aligmentSpeed * Time.deltaTime);
         if (_isAngleClamped)
@@ -260,8 +264,9 @@ public class Rocket : MonoBehaviour
             {
                 _isWarning = false;
             }
-            _ufoPart.material.color = new Vector4(0, ((EnergyTotal * 0.01f) + 1) / 2, ((EnergyTotal * 0.01f) + 1) / 2, 1);
-            _ufoPart.material.SetVector("_EmissionColor", new Vector4(0, EnergyTotal * 0.01f, EnergyTotal * 0.01f, 1f));
+            SetColor(_ufoPart, Color.Lerp(new Vector4(0.05f, 0.05f, 0.05f, 1), _defaultColor, EnergyTotal * 0.01f), Color.Lerp(new Vector4(0.05f, 0.05f, 0.05f, 1), _defaultColor, EnergyTotal * 0.01f));
+            //_ufoPart.material.color = new Vector4(0, ((EnergyTotal * 0.01f) + 1) / 2, ((EnergyTotal * 0.01f) + 1) / 2, 1);
+            //_ufoPart.material.SetVector("_EmissionColor", new Vector4(0, EnergyTotal * 0.01f, EnergyTotal * 0.01f, 1f));
             SetLightIntesity(2);
         }
         Destroy(battery);
@@ -270,8 +275,8 @@ public class Rocket : MonoBehaviour
     {
         if (renderer!=null)
         {
-        renderer.material.color = colorSaturation;
-        renderer.material.SetVector("_EmissionColor", emissionSaturation);
+            renderer.material.color = colorSaturation;
+            renderer.material.SetVector("_EmissionColor", emissionSaturation);
         }
     }
     private void SetLightIntesity(float argument)
@@ -289,15 +294,16 @@ public class Rocket : MonoBehaviour
             float exponent = 0.01f;
             float colorSaturation = ((EnergyTotal * exponent) + 1) / 2; //Линейная функция y=2x-100 (при 100% топлива насыщенность = 100%, при 0% топлива насыщенность = 50%)
             float emissionSaturation = EnergyTotal * exponent; //Линейная функция y=x
-            SetColor(_ufoPart, new Vector4(0, colorSaturation, colorSaturation, 1), new Vector4(0, emissionSaturation, emissionSaturation, 1));
+            SetColor(_ufoPart, Color.Lerp(new Vector4(0.05f, 0.05f, 0.05f, 1), _defaultColor, EnergyTotal * 0.01f), Color.Lerp(new Vector4(0.05f, 0.05f, 0.05f, 1), _defaultColor, EnergyTotal * 0.01f));
+            Debug.Log(Color.Lerp(new Vector4(0.05f, 0.05f, 0.05f, 1), _defaultColor, EnergyTotal * 0.01f));
 
             float lightIntensity = (EnergyTotal / 50);
             SetLightIntesity(lightIntensity);
         }
         if (EnergyTotal >= 10)
         {
-            StartCoroutine(AudioManager.instance.SmoothPitchUp("Hover", 1.5f - (Body.velocity.magnitude / 50), 5f));
-            StartCoroutine(AudioManager.instance.SmoothPitchDown("Hover", 1.5f - (Body.velocity.magnitude / 50), 5f));
+            StartCoroutine(AudioManager.instance.SmoothPitchUp("Hover", 1.5f - (Body.velocity.magnitude / 50), 5f, 0.8f, 1.35f));
+            StartCoroutine(AudioManager.instance.SmoothPitchDown("Hover", 1.5f - (Body.velocity.magnitude / 50), 5f, 0.8f, 1.35f));
         }
         else if (!_isWarning)
         {
@@ -310,17 +316,56 @@ public class Rocket : MonoBehaviour
 
     private void Indicators()
     {
+        Color inactiveColor = new Vector4(0.08f, 0.08f, 0.08f, 1);
         float exponent = 0.01f;
         float saturation = ((EnergyTotal * exponent) + 1.5f) / 2.5f;
-        for (int i = 0; i < _indicators.transform.childCount; i++)
+        for (int i = _indicators.transform.childCount - 1; i >= 0; i--)
         {
-            SetColor(_indicators.transform.GetChild(i).GetComponent<Renderer>(), new Vector4(0, 0, 0, 1), new Vector4(0.2f, 0.2f, 0.2f, 1));
+            if (_indicators.transform.GetChild(i).GetComponent<Renderer>().material.color != inactiveColor)
+            SetColor(_indicators.transform.GetChild(i).GetComponent<Renderer>(), new Vector4(0, 0, 0, 1), inactiveColor);
         }
         for (int i = 0; i < SceneController.StarsAchieved; i++)
         {
             SetColor(_indicators.transform.GetChild(i).GetComponent<Renderer>(), new Vector4(saturation, saturation, saturation, 1), new Vector4(saturation, saturation, saturation, 1));
         }
     }
+    private void initializeModificators()
+    {
+        _damping += PlayerPrefs.GetFloat("Damping", 0);
+        _maxAngularMagnitude += PlayerPrefs.GetFloat("MaxAngularMagnitude", 0);
+        _angularForce += PlayerPrefs.GetFloat("AngularForce", 0);
+        _maxAngle += PlayerPrefs.GetFloat("MaxAngle", 0);
+        _thrustPower += PlayerPrefs.GetFloat("ThrustPower", 0);
+        if (PlayerPrefs.GetInt("IsAngleClamped", 1) == 1) _isAngleClamped = true;
+        else _isAngleClamped = false;
+        if (PlayerPrefs.GetInt("Indicators", 0) == 0) _indicators.SetActive(false);
+        else _indicators.SetActive(true);
 
-    public enum State {Playing, Dead, NextLevel, Restart};
+    }
+    public void AccelerateButton(bool accelerate)
+    {
+        Accelerate = accelerate;
+    }
+    public void TurnLeftButton(bool turn)
+    {
+        TurnLeft = turn;
+    }
+    public void TurnRightButton(bool turn)
+    {
+        TurnRight = turn;
+    }
+    private void SkinSelection()
+    {
+        Debug.Log("Skin");
+        for (int i = 0; i < Appearance.Instance.UFOs.Count; i++)
+        {
+            transform.GetChild(i).gameObject.SetActive(false);
+        }
+        _skin = transform.GetChild(PlayerPrefs.GetInt("SelectedUFO", 0)).gameObject;
+        _skin.SetActive(true);
+        _ufoPart = _skin.transform.GetChild(0).transform.GetComponent<Renderer>();
+        _indicators = _skin.transform.GetChild(1).gameObject;
+        _light = _skin.transform.GetChild(2).transform.GetComponent<Light>();
+    }
+    public enum State {Playing, Dead, NextLevel, Restart, Finish};
 }
